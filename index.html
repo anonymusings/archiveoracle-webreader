@@ -1278,6 +1278,12 @@
       font-size:0.95rem; transition:color 0.15s; padding:2px 5px;
     }
     .bhn-item-del:hover { color:#c43030; }
+    .bhn-item-color-btn {
+      position:absolute; bottom:0.45rem; left:0.45rem;
+      background:none; border:none; color:#5a3a28; cursor:pointer;
+      font-size:0.85rem; transition:color 0.15s; padding:2px 5px;
+    }
+    .bhn-item-color-btn:hover { color:#c4a07a; }
     .bhn-color-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; vertical-align:middle; }
 
     /* ── Quick note popup ─────────────────────────────── */
@@ -3340,6 +3346,7 @@
 
       let _autoSaveTimer   = null;
       let _pendingSync     = false;
+      let _dirtySync       = false;
       let _activeSelection = null;  // { text, range }
       let _bhnActiveTab    = 'bookmarks';
       let _pendingNoteHlId = null;  // highlight_id waiting for a note
@@ -3546,8 +3553,10 @@
           const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
           if (tgUser) _rs.user_id = String(tgUser);
         }
-        if (!_rs.user_id || _pendingSync) return;
+        if (!_rs.user_id) return;
+        if (_pendingSync) { _dirtySync = true; return; }
         _pendingSync = true;
+        _dirtySync = false;
         setTimeout(async () => {
           try {
             const body = {
@@ -3566,8 +3575,9 @@
               _rs.message_id = d.message_id;
               persistState();
             }
-          } catch(e) { /* offline — will sync next time */ }
+          } catch(e) { _dirtySync = true; /* offline — retry on next sync */ }
           _pendingSync = false;
+          if (_dirtySync) { _dirtySync = false; syncToTelegram(); }
         }, 1500);
       }
 
@@ -3887,6 +3897,24 @@
         }
       }
 
+      function editHighlightColor(hlId) {
+        const colors = ['#a40606', '#a46318', '#c28686', '#8d9f72', '#6d5c5c'];
+        const colorNames = ['Crimson', 'Bronze', 'Rose', 'Sage', 'Ash'];
+        const hl = _rs.highlights.find(h => h.id === hlId);
+        if (!hl) return;
+        const currentIndex = colors.indexOf(hl.color);
+        const nextIndex = (currentIndex + 1) % colors.length;
+        hl.color = colors[nextIndex];
+        persistState();
+        syncToTelegram();
+        const mark = document.querySelector(`mark[data-hl-id="${hlId}"]`);
+        if (mark) {
+          mark.setAttribute('data-color', hl.color);
+          mark.style.background = hl.color;
+        }
+        renderBhnTab(_bhnActiveTab);
+        showToast(`Color → ${colorNames[nextIndex]} ✨`);
+      }
 
       // ═══════════════════════════════════════════════════════════════
       // PHASE 4: BHN MODAL (Bookmarks / Highlights / Notes)
@@ -3948,7 +3976,7 @@
         body.innerHTML = _rs.highlights.map(hl => {
           const snippet = hl.text.length > 200 ? hl.text.slice(0,200)+'…' : hl.text;
           const noteHtml = hl.note
-            ? `<div class="bhn-item-note">✎ ${escHtml(hl.note)}</div>`
+            ? `<div class="bhn-item-note">♯ ${escHtml(hl.note)}</div>`
             : `<div class="bhn-item-note" style="cursor:pointer;color:#826a5d;" onclick="event.stopPropagation();editHighlightNote('${hl.id}')">+ add note</div>`;
           return `
           <div class="bhn-item" onclick="goToHighlight('${hl.id}')">
@@ -3957,6 +3985,7 @@
             ${noteHtml}
             <div class="bhn-item-meta" style="margin-top:0.2rem">Ch.${hl.chapter_index+1} &middot; ${_fmtTs(hl.timestamp)}</div>
             <button class="bhn-item-del" onclick="event.stopPropagation();deleteHighlight('${hl.id}')" title="Delete">&#x2715;</button>
+            <button class="bhn-item-color-btn" onclick="event.stopPropagation();editHighlightColor('${hl.id}')" title="Change color">✏</button>
           </div>`;
         }).join('');
       }
