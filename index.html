@@ -1111,18 +1111,18 @@
     #bookmark-ribbon-btn {
       position: fixed; top: 5rem; right: 0; z-index: 300;
       width: 36px; height: 64px;
-      background: var(--maroon, #8B2035); border: none;
+      background: transparent; border: none;
       border-radius: 4px 0 0 4px; cursor: pointer;
       display: none; flex-direction: column;
       align-items: center; justify-content: center; gap: 3px;
-      box-shadow: -2px 2px 8px rgba(0,0,0,0.3);
-      transition: background 0.2s, transform 0.2s; padding: 0;
+      box-shadow: none;
+      transition: transform 0.3s var(--ease-out), opacity 0.3s var(--ease-out); padding: 0;
     }
-    #bookmark-ribbon-btn:hover { background:#a83048; transform:translateX(-3px); }
+    #bookmark-ribbon-btn:hover { transform:translateX(-3px); }
+    #bookmark-ribbon-btn.hidden { transform: translateX(100%); opacity: 0; }
     #bookmark-ribbon-btn .ribbon-icon { display:flex; align-items:center; justify-content:center; }
     #bookmark-ribbon-btn .ribbon-count { font-size:9px; color:rgba(245,230,208,0.7); letter-spacing:0.05em; font-family:var(--font-display); }
-    #page-reader.active #bookmark-ribbon-btn { display: flex; opacity: 0.45; }
-    #page-reader.active #bookmark-ribbon-btn.has-items { opacity: 1; }
+    #page-reader.active #bookmark-ribbon-btn.has-items { display: flex; }
 
     /* ── Invisible tap zone (top-right corner, KOReader style) ── */
     #reader-tap-bookmark {
@@ -3297,6 +3297,7 @@
 
         const header = document.querySelector('header');
         const sidebarToggle = document.getElementById('sidebar-toggle');
+        const bookmarkRibbon = document.getElementById('bookmark-ribbon-btn');
         const readerMain = document.getElementById('reader-main');
         const currentScrollY = readerMain.scrollTop;
 
@@ -3309,11 +3310,13 @@
             // Scrolling DOWN: Hide controls
             header.classList.add('hidden');
             sidebarToggle?.classList.add('hidden');
+            bookmarkRibbon?.classList.add('hidden');
             document.body.classList.add('reader-fullscreen');
           } else if (delta < 0) {
             // Scrolling UP: Immediately show controls
             header.classList.remove('hidden');
             sidebarToggle?.classList.remove('hidden');
+            bookmarkRibbon?.classList.remove('hidden');
             document.body.classList.remove('reader-fullscreen');
           }
           lastScrollY = currentScrollY;
