@@ -508,6 +508,42 @@
       background: var(--smoke);
     }
 
+    .library-search-box {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: var(--smoke);
+      border: 1px solid rgba(111, 31, 30, 0.4);
+      border-radius: 2px;
+      padding: 0.45rem 0.8rem;
+      flex: 0 1 200px;
+      transition: border-color 0.2s;
+    }
+
+    .library-search-box:focus-within {
+      border-color: var(--crimson-pale);
+    }
+
+    .library-search-box svg {
+      color: var(--ash-light);
+      flex-shrink: 0;
+    }
+
+    .library-search-box input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--vellum-dark);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .library-search-box input::placeholder {
+      color: var(--ash-light);
+      font-style: italic;
+    }
+
     /* Library grid */
     .library-grid {
       display: grid;
@@ -1228,7 +1264,7 @@
       font-style:italic; margin:0.25rem 0;
       padding-left:0.7rem; border-left:2px solid;
     }
-    .bhn-item-note { font-family:"Crimson Pro",serif; font-size:0.8rem; color:#7a6050; margin-top:0.25rem; }
+    .bhn-item-note { font-family:"Crimson Pro",serif; font-size:0.8rem; color:#826a5d; margin-top:0.25rem; }
     .bhn-item-del {
       position:absolute; top:0.45rem; right:0.45rem;
       background:none; border:none; color:#3a1a10; cursor:pointer;
@@ -1888,14 +1924,16 @@
           </svg>
           Open Library
         </button>
-        <button class="btn btn-ghost" onclick="showPage('search')">
+        <button class="btn btn-ghost" onclick="document.getElementById('file-upload-input').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          Search Tomes
+          Upload File
         </button>
+        <input type="file" id="file-upload-input" accept=".epub,.pdf" style="display:none" onchange="handleFileUpload(event)" />
       </div>
     </div>
   </div>
@@ -1919,6 +1957,13 @@
             <option value="oldest">Oldest first</option>
             <option value="title">Title A–Z</option>
           </select>
+          <div class="library-search-box">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="library-search-input" placeholder="Search library..." oninput="renderLibrary()" />
+          </div>
         </div>
       </div>
       <div id="library-grid" class="library-grid"></div>
@@ -2304,6 +2349,48 @@
         try { localStorage.setItem('oracle_library', JSON.stringify(library)); } catch (e) { }
       }
 
+      function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'epub' && ext !== 'pdf') {
+          alert('Please upload a .epub or .pdf file');
+          event.target.value = ''; // Reset input
+          return;
+        }
+
+        // Create object URL for the file
+        const fileUrl = URL.createObjectURL(file);
+        
+        // Extract title from filename (remove extension)
+        const title = file.name.replace(/\.(epub|pdf)$/i, '');
+
+        // Create library entry
+        const fic = {
+          title: title,
+          author: 'N/A',
+          fandom: 'N/A',
+          tags: 'N/A',
+          summary: 'N/A',
+          words: 'N/A',
+          category: 'N/A',
+          fileUrl: fileUrl,
+          ext: ext,
+          addedAt: new Date().toISOString()
+        };
+
+        addToLibrary(fic);
+        renderLibrary();
+        showPage('library');
+        
+        // Reset the input so the same file can be uploaded again if needed
+        event.target.value = '';
+        
+        // Show success message
+        showToast(`Added "${title}" to library ✨`);
+      }
+
       function addToLibrary(fic) {
         if (!fic.title || fic.title === 'Untitled') {
           fic.title = extractTitleFromUrl(fic.fileUrl);
@@ -2378,21 +2465,41 @@
         const grid = document.getElementById('library-grid');
         const extFilter = document.getElementById('filter-ext').value;
         const sortFilter = document.getElementById('filter-sort').value;
+        const searchQuery = document.getElementById('library-search-input')?.value.toLowerCase().trim() || '';
 
         let fics = [...library];
         if (extFilter) fics = fics.filter(f => f.ext === extFilter);
+        
+        // Search filter - search in title, author, fandom, and tags
+        if (searchQuery) {
+          fics = fics.filter(f => {
+            const searchableText = [
+              f.title,
+              f.author,
+              f.fandom,
+              f.tags
+            ].filter(Boolean).join(' ').toLowerCase();
+            return searchableText.includes(searchQuery);
+          });
+        }
 
         if (sortFilter === 'oldest') fics.sort((a, b) => new Date(a.addedAt) - new Date(b.addedAt));
         else if (sortFilter === 'title') fics.sort((a, b) => a.title.localeCompare(b.title));
         // newest is default (already newest-first from unshift)
 
         if (fics.length === 0) {
-          grid.innerHTML = `
-      <div class="empty-state" style="grid-column:1/-1;">
-        <div class="empty-state-sigil">📚</div>
-        <div class="empty-state-title">The shelves are bare.</div>
-        <div class="empty-state-desc">Send a PDF or EPUB to the Oracle bot, then tap "Read Now" to open it here. It will appear in your library automatically.</div>
-      </div>`;
+          const emptyMessage = searchQuery 
+            ? `<div class="empty-state" style="grid-column:1/-1;">
+                <div class="empty-state-sigil">🔍</div>
+                <div class="empty-state-title">No results found.</div>
+                <div class="empty-state-desc">Try a different search term.</div>
+              </div>`
+            : `<div class="empty-state" style="grid-column:1/-1;">
+                <div class="empty-state-sigil">📚</div>
+                <div class="empty-state-title">The shelves are bare.</div>
+                <div class="empty-state-desc">Send a PDF or EPUB to the Oracle bot, then tap "Read Now" to open it here. It will appear in your library automatically.</div>
+              </div>`;
+          grid.innerHTML = emptyMessage;
           return;
         }
 
@@ -3579,7 +3686,8 @@
           if (!text || text.length < 2) { hideSelectionPopup(); return; }
           _activeSelection = { text, range: sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null };
           const rect = sel.getRangeAt(0).getBoundingClientRect();
-          showSelectionPopup(rect.left + rect.width / 2, rect.top - 8);
+          // Position BELOW selection to avoid iOS native menu covering it
+          showSelectionPopup(rect.left + rect.width / 2, rect.bottom + 8);
         }, 10);
       }
 
@@ -3598,9 +3706,13 @@
         const w = pop.offsetWidth || 134;
         const h = pop.offsetHeight || 80;
         let left = cx - w / 2;
-        let top  = cy - h - 6;
+        let top  = cy + 8; // Position below by default
+        // If would go below viewport, position above instead
+        if (top + h + 8 > window.innerHeight) {
+          top = cy - h - 48; // Position above if not enough space below
+        }
         left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
-        top  = top < 8 ? cy + 28 : top;
+        top  = Math.max(8, top);
         pop.style.left = left + 'px';
         pop.style.top  = top  + 'px';
       }
@@ -3827,7 +3939,7 @@
           const snippet = hl.text.length > 200 ? hl.text.slice(0,200)+'…' : hl.text;
           const noteHtml = hl.note
             ? `<div class="bhn-item-note">✎ ${escHtml(hl.note)}</div>`
-            : `<div class="bhn-item-note" style="cursor:pointer;color:#5a3a28;" onclick="event.stopPropagation();editHighlightNote('${hl.id}')">+ add note</div>`;
+            : `<div class="bhn-item-note" style="cursor:pointer;color:#826a5d;" onclick="event.stopPropagation();editHighlightNote('${hl.id}')">+ add note</div>`;
           return `
           <div class="bhn-item" onclick="goToHighlight('${hl.id}')">
             <span class="bhn-color-dot" style="background:${hl.color}"></span>
@@ -3851,7 +3963,7 @@
             <div class="bhn-item-quote" style="border-color:${hl.color}">"${escHtml(hl.text.slice(0,120))}${hl.text.length>120?'…':''}"</div>
             <div class="bhn-item-note">✎ ${escHtml(hl.note)}</div>
             <div class="bhn-item-meta" style="margin-top:0.2rem">Ch.${hl.chapter_index+1} &middot; ${_fmtTs(hl.timestamp)}</div>
-            <button class="bhn-item-del" onclick="event.stopPropagation();editHighlightNote('${hl.id}')" title="Edit note" style="color:#5a3a28;">✎</button>
+            <button class="bhn-item-del" onclick="event.stopPropagation();editHighlightNote('${hl.id}')" title="Edit note" style="color:#826a5d;">✎</button>
           </div>`).join('');
       }
 
