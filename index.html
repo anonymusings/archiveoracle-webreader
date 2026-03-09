@@ -1121,7 +1121,21 @@
     #bookmark-ribbon-btn:hover { background:#a83048; transform:translateX(-3px); }
     #bookmark-ribbon-btn .ribbon-icon { display:flex; align-items:center; justify-content:center; }
     #bookmark-ribbon-btn .ribbon-count { font-size:9px; color:rgba(245,230,208,0.7); letter-spacing:0.05em; font-family:var(--font-display); }
-    #page-reader.active #bookmark-ribbon-btn.has-items { display: flex; }
+    #page-reader.active #bookmark-ribbon-btn { display: flex; opacity: 0.45; }
+    #page-reader.active #bookmark-ribbon-btn.has-items { opacity: 1; }
+
+    /* ── Invisible tap zone (top-right corner, KOReader style) ── */
+    #reader-tap-bookmark {
+      position: fixed;
+      top: 0; right: 0;
+      width: 25vw; height: 35vh;
+      min-width: 80px; min-height: 100px;
+      z-index: 299;
+      cursor: pointer;
+      background: transparent;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #page-reader:not(.active) #reader-tap-bookmark { display: none; }
 
     /* ── Text selection popup ─────────────────────────── */
     #selection-popup {
@@ -2035,13 +2049,14 @@
 
       <!-- Phase 4: Bookmark ribbon button -->
       <button id="bookmark-ribbon-btn" onclick="openBhnModal('bookmarks')" title="Bookmarks & Highlights">
-        <svg class="ribbon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18">
-          <path d="M12 2C12 2 7 2 5 4C3 6 3 9 3 12C3 16 5 19 8 21C9.5 22 11 22.5 12 22.5C13 22.5 14.5 22 16 21C19 19 21 16 21 12C21 9 21 6 19 4C17 2 12 2 12 2Z" fill="rgba(245,230,208,0.15)" stroke="#f5e6d0" stroke-width="1"/>
-          <path d="M8 2.5V14L12 11.5L16 14V2.5" stroke="#f5e6d0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M9 6H15M9 8.5H13" stroke="rgba(245,230,208,0.5)" stroke-width="1" stroke-linecap="round"/>
+        <svg class="ribbon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+          <path d="M6 3H18V21L12 16.5L6 21V3Z" stroke="#f5e6d0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
         </svg>
         <span class="ribbon-count" id="ribbon-count"></span>
       </button>
+
+      <!-- Invisible tap zone: top-right corner adds a bookmark (KOReader style) -->
+      <div id="reader-tap-bookmark" onclick="handleTapBookmark()" title=""></div>
 
     </div><!-- /reader-layout -->
 
@@ -2381,10 +2396,13 @@
           return;
         }
 
-        grid.innerHTML = fics.map(fic => ficCard(fic)).join('');
+        grid.innerHTML = (_renderedFics = fics).map((fic, i) => ficCard(fic, i)).join('');
       }
 
-      function ficCard(fic) {
+      // _renderedFics holds the current filtered/sorted array so index-based onclick works
+      let _renderedFics = [];
+
+      function ficCard(fic, idx) {
         const icon = fic.ext === 'epub'
           ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
           : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
@@ -2401,7 +2419,7 @@
           ? `<span class="fic-chip">${escHtml(fic.category)}</span>` : '';
 
         return `
-    <div class="fic-card" onclick="openReader(library.find(f=>f.id===${fic.id}))">
+    <div class="fic-card" onclick="openReader(_renderedFics[${idx}])">
       <div class="fic-card-ext"><span class="fic-card-ext-dot"></span>${icon} ${fic.ext.toUpperCase()}</div>
       <div class="fic-card-title">${escHtml(fic.title)}</div>
       <div class="fic-card-author">${fic.author !== 'N/A' ? 'by ' + escHtml(fic.author) : ''}</div>
@@ -2409,14 +2427,16 @@
       <div class="fic-card-meta">${words}${category}${tags}</div>
       ${summary}
       <div class="fic-card-actions">
-        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openReader(library.find(f=>f.id===${fic.id}))">Read</button>
-        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();removeFromLibrary(${fic.id})">Remove</button>
+        <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openReader(_renderedFics[${idx}])">Read</button>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();removeFromLibrary(${idx})">Remove</button>
       </div>
     </div>`;
       }
 
-      function removeFromLibrary(id) {
-        library = library.filter(f => f.id !== id);
+      function removeFromLibrary(idx) {
+        const fic = _renderedFics[idx];
+        if (!fic) return;
+        library = library.filter(f => f.fileUrl !== fic.fileUrl);
         saveLibraryToStorage();
         renderLibrary();
         showToast('Removed from library.');
@@ -3498,6 +3518,20 @@
         syncToTelegram();
         showToast('Bookmark added 🔖');
         updateRibbonCount();
+      }
+
+      /** KOReader-style: tap top-right corner to add bookmark, flash the ribbon. */
+      function handleTapBookmark() {
+        addBookmark();
+        const btn = document.getElementById('bookmark-ribbon-btn');
+        if (btn) {
+          btn.style.transform = 'translateX(-8px)';
+          btn.style.opacity = '1';
+          setTimeout(() => {
+            btn.style.transform = '';
+            btn.style.opacity = '';
+          }, 400);
+        }
       }
 
       function deleteBookmark(id) {
