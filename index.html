@@ -10,6 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Cinzel:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap"
     rel="stylesheet" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
@@ -2247,7 +2248,7 @@
               : `${SERVER_URL}/file?file_id=${encodeURIComponent(fileParam)}&user_id=${params.get('user_id') || ''}`;
 
             const fic = {
-              id: Date.now(),
+              id: fileParam,
               title: params.get('title') || 'Untitled',
               author: params.get('author') || '',
               fandom: params.get('fandom') || '',
@@ -2301,7 +2302,7 @@
         } else {
           // Update title/author if it was Untitled or empty, and new data is better
           let updated = false;
-          if ((!exists.title || exists.title === 'Untitled') && fic.title && fic.title !== 'Untitled') {
+          if ((!exists.title || exists.title === 'Untitled' || exists.title === 'file') && fic.title && fic.title !== 'Untitled') {
             exists.title = fic.title;
             updated = true;
           }
@@ -3335,9 +3336,9 @@
 
         updateRibbonCount();
 
-        // Start auto-save
+        // Start auto-save every 30s
         if (_autoSaveTimer) clearInterval(_autoSaveTimer);
-        _autoSaveTimer = setInterval(autoSavePosition, 240000);
+        _autoSaveTimer = setInterval(autoSavePosition, 30000);
 
         // Restore last position after a short delay (let chapter render first)
         if (_rs.last_position) {
@@ -3372,6 +3373,11 @@
 
       /** Sync full state to Telegram message (debounced). */
       function syncToTelegram() {
+        // Get user_id from URL param first, fall back to Telegram WebApp initData
+        if (!_rs.user_id) {
+          const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+          if (tgUser) _rs.user_id = String(tgUser);
+        }
         if (!_rs.user_id || _pendingSync) return;
         _pendingSync = true;
         setTimeout(async () => {
@@ -3408,6 +3414,17 @@
         } else {
           _scrollToPercent(pos.scroll_percent);
         }
+      }
+
+      // Save position when app is hidden or page unloads (Mini App close)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') autoSavePosition();
+      });
+      window.addEventListener('pagehide', autoSavePosition);
+      if (window.Telegram?.WebApp) {
+        window.Telegram.WebApp.onEvent('viewportChanged', () => {
+          if (!window.Telegram.WebApp.isExpanded) autoSavePosition();
+        });
       }
 
       function _scrollToPercent(pct) {
