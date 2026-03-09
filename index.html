@@ -3322,7 +3322,7 @@
                 message_id: null,
                 last_position: null, bookmarks: [], highlights: [] };
 
-        // Load from localStorage
+        // Load from localStorage first (instant)
         try {
           const raw = localStorage.getItem(_lsKey(_rs.file_id));
           if (raw) {
@@ -3343,6 +3343,37 @@
         // Restore last position after a short delay (let chapter render first)
         if (_rs.last_position) {
           setTimeout(() => restoreLastPosition(), 600);
+        }
+
+        // Fetch from server in background — server may have fresher state or better title
+        if (_rs.user_id) {
+          fetch(`${SERVER_URL}/reading-state/${encodeURIComponent(_rs.file_id)}?user_id=${_rs.user_id}`)
+            .then(r => r.json())
+            .then(d => {
+              if (!d.state) return;
+              const s = d.state;
+              // Use server title if local one is bad
+              if (s.title && s.title !== 'Untitled' && s.title !== 'file' &&
+                  (!_rs.title || _rs.title === 'Untitled' || _rs.title === 'file')) {
+                _rs.title = s.title;
+                document.getElementById('sidebar-title').innerText = s.title;
+              }
+              // Merge: use server state if it has more content than local
+              const serverTotal = (s.bookmarks || []).length + (s.highlights || []).length;
+              const localTotal  = _rs.bookmarks.length + _rs.highlights.length;
+              if (serverTotal > localTotal) {
+                _rs.bookmarks  = s.bookmarks  || _rs.bookmarks;
+                _rs.highlights = s.highlights || _rs.highlights;
+                _rs.last_position = s.last_position || _rs.last_position;
+                persistState();
+                updateRibbonCount();
+              }
+              if (d.message_id && !_rs.message_id) {
+                _rs.message_id = d.message_id;
+                persistState();
+              }
+            })
+            .catch(() => {});
         }
       }
 
