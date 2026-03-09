@@ -2096,7 +2096,7 @@
       // IMPORTANT: Replace this with your Google Apps Script web app URL
       // Phase 2: File requests now go to the FastAPI /file endpoint on the same origin.
       // SERVER_URL is injected at deploy time; in development set it to http://localhost:8080
-      const SERVER_URL = window.ORACLE_SERVER_URL || '';
+      const SERVER_URL = window.ORACLE_SERVER_URL || 'https://archiveoraclewebreader-helpers.onrender.com';
 
       let library = [];       // array of fic metadata objects
       let currentFic = null;  // currently open fic
@@ -2239,11 +2239,11 @@
         const extParam = params.get('ext') || 'pdf';
 
         if (fileParam) {
-          // Support both direct Telegram URLs and legacy file_id proxy
+          // Always proxy through backend to avoid CORS
           try {
             const isUrl = fileParam.startsWith('http');
             const fileUrl = isUrl
-              ? fileParam
+              ? `${SERVER_URL}/file?url=${encodeURIComponent(fileParam)}&user_id=${params.get('user_id') || ''}`
               : `${SERVER_URL}/file?file_id=${encodeURIComponent(fileParam)}&user_id=${params.get('user_id') || ''}`;
 
             const fic = {
