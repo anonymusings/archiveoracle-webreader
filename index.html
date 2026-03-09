@@ -544,6 +544,13 @@
       font-style: italic;
     }
 
+    /* Hide library search on larger screens (header search is available) */
+    @media (min-width: 900px) {
+      .library-search-box {
+        display: none;
+      }
+    }
+
     /* Library grid */
     .library-grid {
       display: grid;
@@ -1191,10 +1198,10 @@
     .sel-btn:hover { background:rgba(139,32,53,0.35); }
     .sel-btn+.sel-btn { border-top:1px solid rgba(139,32,53,0.2); }
     #color-picker-row {
-      display:none; gap:7px; padding:0.5rem 1rem;
-      border-top:1px solid rgba(139,32,53,0.2); align-items:center;
+      display:flex; gap:7px; padding:0.5rem 1rem;
+      border-bottom:1px solid rgba(139,32,53,0.2); align-items:center;
+      justify-content: center;
     }
-    #color-picker-row.show { display:flex; }
     .color-swatch {
       width:22px; height:22px; border-radius:50%;
       border:2px solid transparent; cursor:pointer;
@@ -2123,12 +2130,9 @@
 
     <!-- Phase 4: Text selection popup -->
     <div id="selection-popup">
-      <button class="sel-btn" id="sel-highlight-btn" onclick="showColorPicker()">
+      <div style="padding:0.55rem 1rem; border-bottom:1px solid rgba(139,32,53,0.2); display:flex; align-items:center; gap:0.5rem; color:#f0e4d0; font-family:'Crimson Pro',serif; font-size:0.9rem;">
         <span>&#x2590;</span> Highlight
-      </button>
-      <button class="sel-btn" id="sel-note-btn" onclick="selAddNote()">
-        <span>&#x270E;</span> Add Note
-      </button>
+      </div>
       <div id="color-picker-row">
         <span class="color-swatch" style="background:#a40606" data-color="#a40606" onclick="applyHighlight('#a40606')" title="Crimson"></span>
         <span class="color-swatch" style="background:#a46318" data-color="#a46318" onclick="applyHighlight('#a46318')" title="Bronze"></span>
@@ -2136,6 +2140,9 @@
         <span class="color-swatch" style="background:#8d9f72" data-color="#8d9f72" onclick="applyHighlight('#8d9f72')" title="Sage"></span>
         <span class="color-swatch" style="background:#6d5c5c" data-color="#6d5c5c" onclick="applyHighlight('#6d5c5c')" title="Ash"></span>
       </div>
+      <button class="sel-btn" id="sel-note-btn" onclick="selAddNote()">
+        <span>&#x270E;</span> Add Note
+      </button>
     </div>
 
     <!-- Phase 4: Quick note popup -->
@@ -3686,8 +3693,8 @@
           if (!text || text.length < 2) { hideSelectionPopup(); return; }
           _activeSelection = { text, range: sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null };
           const rect = sel.getRangeAt(0).getBoundingClientRect();
-          // Position BELOW selection to avoid iOS native menu covering it
-          showSelectionPopup(rect.left + rect.width / 2, rect.bottom + 8);
+          // Position ABOVE selection (with more space to avoid iOS menu)
+          showSelectionPopup(rect.left + rect.width / 2, rect.top - 12);
         }, 10);
       }
 
@@ -3700,16 +3707,15 @@
 
       function showSelectionPopup(cx, cy) {
         const pop = document.getElementById('selection-popup');
-        document.getElementById('color-picker-row').classList.remove('show');
         pop.classList.add('show');
         // Smart positioning — keep inside viewport
         const w = pop.offsetWidth || 134;
-        const h = pop.offsetHeight || 80;
+        const h = pop.offsetHeight || 140; // taller now with color picker
         let left = cx - w / 2;
-        let top  = cy + 8; // Position below by default
-        // If would go below viewport, position above instead
-        if (top + h + 8 > window.innerHeight) {
-          top = cy - h - 48; // Position above if not enough space below
+        let top  = cy - h - 12; // Position above by default
+        // If would go above viewport, position below instead
+        if (top < 8) {
+          top = cy + 40; // Position below if not enough space above
         }
         left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
         top  = Math.max(8, top);
@@ -3719,12 +3725,7 @@
 
       function hideSelectionPopup() {
         document.getElementById('selection-popup').classList.remove('show');
-        document.getElementById('color-picker-row').classList.remove('show');
         _activeSelection = null;
-      }
-
-      function showColorPicker() {
-        document.getElementById('color-picker-row').classList.toggle('show');
       }
 
       /** Wrap selected text in a <mark> and save highlight. */
