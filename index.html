@@ -2088,7 +2088,7 @@
       // IMPORTANT: Replace this with your Google Apps Script web app URL
       // Phase 2: File requests now go to the FastAPI /file endpoint on the same origin.
       // SERVER_URL is injected at deploy time; in development set it to http://localhost:8080
-      const SERVER_URL = window.ORACLE_SERVER_URL || 'https://a10129-9b92.e.jrnm.app';
+      const SERVER_URL = window.ORACLE_SERVER_URL || '';
 
       let library = [];       // array of fic metadata objects
       let currentFic = null;  // currently open fic
