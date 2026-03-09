@@ -1170,7 +1170,7 @@
     /* ── Invisible tap zone (top-right corner, KOReader style) ── */
     #reader-tap-bookmark {
       position: fixed;
-      top: 0; right: 0;
+      top: 64px; right: 0;
       width: 25vw; height: 35vh;
       min-width: 80px; min-height: 100px;
       z-index: 299;
@@ -3623,6 +3623,31 @@
           ? epubChapters[currentChapterIdx].title
           : 'Chapter ' + (currentChapterIdx + 1);
 
+        // Check for existing bookmarks in this chapter
+        const existingInChapter = _rs.bookmarks.filter(b => b.chapter_index === currentChapterIdx);
+        
+        for (let existing of existingInChapter) {
+          const diff = Math.abs(existing.scroll_percent - pct);
+          
+          // Exact duplicate - within 2%
+          if (diff < 2) {
+            showToast('Bookmark already exists here 📍');
+            return;
+          }
+          
+          // Near duplicate - within 5%, update it
+          if (diff < 5) {
+            existing.scroll_percent = Math.round(pct * 10) / 10;
+            existing.timestamp = new Date().toISOString();
+            persistState();
+            syncToTelegram();
+            showToast('Bookmark updated 🔖');
+            updateRibbonCount();
+            return;
+          }
+        }
+
+        // No duplicates found, create new bookmark
         const bm = {
           id: 'bm_' + Date.now(),
           chapter_index: currentChapterIdx,
@@ -3693,8 +3718,8 @@
           if (!text || text.length < 2) { hideSelectionPopup(); return; }
           _activeSelection = { text, range: sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null };
           const rect = sel.getRangeAt(0).getBoundingClientRect();
-          // Position ABOVE selection (with more space to avoid iOS menu)
-          showSelectionPopup(rect.left + rect.width / 2, rect.top - 12);
+          // Position well ABOVE selection to avoid iOS menu
+          showSelectionPopup(rect.left + rect.width / 2, rect.top - 20);
         }, 10);
       }
 
@@ -3712,10 +3737,10 @@
         const w = pop.offsetWidth || 134;
         const h = pop.offsetHeight || 140; // taller now with color picker
         let left = cx - w / 2;
-        let top  = cy - h - 12; // Position above by default
+        let top  = cy - h - 20; // Position well above by default
         // If would go above viewport, position below instead
         if (top < 8) {
-          top = cy + 40; // Position below if not enough space above
+          top = cy + 50; // Position below if not enough space above
         }
         left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
         top  = Math.max(8, top);
