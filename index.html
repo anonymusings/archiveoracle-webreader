@@ -1232,7 +1232,7 @@
     }
     .bhn-title { font-size:0.7rem; letter-spacing:0.2em; text-transform:uppercase; color:#6a4a3a; }
     .bhn-close {
-      background:none; border:none; color:#6a4a3a; cursor:pointer;
+      background:none; border:none; color:#826a5d; cursor:pointer;
       font-size:1.3rem; line-height:1; padding:0 4px; transition:color 0.15s;
     }
     .bhn-close:hover { color:#f0d8c0; }
@@ -1274,7 +1274,7 @@
     .bhn-item-note { font-family:"Crimson Pro",serif; font-size:0.8rem; color:#826a5d; margin-top:0.25rem; }
     .bhn-item-del {
       position:absolute; top:0.45rem; right:0.45rem;
-      background:none; border:none; color:#3a1a10; cursor:pointer;
+      background:none; border:none; color:#826a5d; cursor:pointer;
       font-size:0.95rem; transition:color 0.15s; padding:2px 5px;
     }
     .bhn-item-del:hover { color:#c43030; }
@@ -3623,31 +3623,21 @@
           ? epubChapters[currentChapterIdx].title
           : 'Chapter ' + (currentChapterIdx + 1);
 
-        // Check for existing bookmarks in this chapter
-        const existingInChapter = _rs.bookmarks.filter(b => b.chapter_index === currentChapterIdx);
+        // Check if bookmark already exists for this chapter
+        const existingInChapter = _rs.bookmarks.find(b => b.chapter_index === currentChapterIdx);
         
-        for (let existing of existingInChapter) {
-          const diff = Math.abs(existing.scroll_percent - pct);
-          
-          // Exact duplicate - within 2%
-          if (diff < 2) {
-            showToast('Bookmark already exists here 📍');
-            return;
-          }
-          
-          // Near duplicate - within 5%, update it
-          if (diff < 5) {
-            existing.scroll_percent = Math.round(pct * 10) / 10;
-            existing.timestamp = new Date().toISOString();
-            persistState();
-            syncToTelegram();
-            showToast('Bookmark updated 🔖');
-            updateRibbonCount();
-            return;
-          }
+        if (existingInChapter) {
+          // Update existing bookmark
+          existingInChapter.scroll_percent = Math.round(pct * 10) / 10;
+          existingInChapter.timestamp = new Date().toISOString();
+          persistState();
+          syncToTelegram();
+          showToast('Bookmark updated 🔖');
+          updateRibbonCount();
+          return;
         }
 
-        // No duplicates found, create new bookmark
+        // Create new bookmark
         const bm = {
           id: 'bm_' + Date.now(),
           chapter_index: currentChapterIdx,
@@ -3718,8 +3708,8 @@
           if (!text || text.length < 2) { hideSelectionPopup(); return; }
           _activeSelection = { text, range: sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null };
           const rect = sel.getRangeAt(0).getBoundingClientRect();
-          // Position well ABOVE selection to avoid iOS menu
-          showSelectionPopup(rect.left + rect.width / 2, rect.top - 20);
+          // Position well above selection to avoid iOS menu
+          showSelectionPopup(rect.left + rect.width / 2, rect.top - 30);
         }, 10);
       }
 
@@ -3737,10 +3727,10 @@
         const w = pop.offsetWidth || 134;
         const h = pop.offsetHeight || 140; // taller now with color picker
         let left = cx - w / 2;
-        let top  = cy - h - 20; // Position well above by default
+        let top  = cy - h - 30; // Position well above by default
         // If would go above viewport, position below instead
         if (top < 8) {
-          top = cy + 50; // Position below if not enough space above
+          top = cy + 60; // Position below if not enough space above
         }
         left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
         top  = Math.max(8, top);
@@ -3939,7 +3929,7 @@
 
       function renderBookmarks(body) {
         if (!_rs.bookmarks.length) {
-          body.innerHTML = '<div class="bhn-empty">No bookmarks yet.<br>Tap <b>+</b> while reading to drop one.</div>';
+          body.innerHTML = '<div class="bhn-empty">No bookmarks yet.<br>Tap the top-right corner while reading to bookmark.</div>';
           return;
         }
         body.innerHTML = _rs.bookmarks.map(bm => `
@@ -3948,12 +3938,6 @@
             <div class="bhn-item-meta">${Math.round(bm.scroll_percent)}% &middot; ${_fmtTs(bm.timestamp)}</div>
             <button class="bhn-item-del" onclick="event.stopPropagation();deleteBookmark('${bm.id}')" title="Delete">&#x2715;</button>
           </div>`).join('');
-        // Add Bookmark button at top
-        body.innerHTML = `<button class="bhn-item" style="margin-bottom:0.75rem;border-color:rgba(139,32,53,0.35);text-align:center;justify-content:center;"
-          onclick="addBookmark();renderBhnTab('bookmarks')">
-          <span style="color:#c4a07a;font-size:1.1rem;">🔖</span>
-          <span style="color:#c4a07a;font-family:'Cinzel Decorative',serif;font-size:0.58rem;letter-spacing:0.12em;margin-left:6px;">ADD BOOKMARK HERE</span>
-        </button>` + body.innerHTML;
       }
 
       function renderHighlights(body) {
