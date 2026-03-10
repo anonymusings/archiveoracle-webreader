@@ -2186,6 +2186,57 @@
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
       // ═══════════════════════════════════════════
+      // INDEXEDDB — persistent storage for web-uploaded files
+      // Blob URLs die on page reload; we store the raw bytes here instead.
+      // ═══════════════════════════════════════════
+      let _idb = null;
+      const IDB_NAME    = 'oracle_files';
+      const IDB_STORE   = 'files';
+      const IDB_VERSION = 1;
+
+      function _openIdb() {
+        return new Promise((resolve, reject) => {
+          if (_idb) { resolve(_idb); return; }
+          const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+          req.onupgradeneeded = e => {
+            e.target.result.createObjectStore(IDB_STORE);
+          };
+          req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+          req.onerror   = e => reject(e.target.error);
+        });
+      }
+
+      async function idbSaveFile(id, arrayBuffer) {
+        const db = await _openIdb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put(arrayBuffer, id);
+          tx.oncomplete = resolve;
+          tx.onerror    = e => reject(e.target.error);
+        });
+      }
+
+      async function idbLoadFile(id) {
+        const db = await _openIdb();
+        return new Promise((resolve, reject) => {
+          const tx  = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get(id);
+          req.onsuccess = e => resolve(e.target.result || null);
+          req.onerror   = e => reject(e.target.error);
+        });
+      }
+
+      async function idbDeleteFile(id) {
+        const db = await _openIdb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).delete(id);
+          tx.oncomplete = resolve;
+          tx.onerror    = e => reject(e.target.error);
+        });
+      }
+
+      // ═══════════════════════════════════════════
       // SETTINGS PANEL INITIALIZATION
       // ═══════════════════════════════════════════
       
@@ -2369,39 +2420,52 @@
         const ext = file.name.split('.').pop().toLowerCase();
         if (ext !== 'epub' && ext !== 'pdf') {
           alert('Please upload a .epub or .pdf file');
-          event.target.value = ''; // Reset input
+          event.target.value = '';
           return;
         }
 
-        // Create object URL for the file
-        const fileUrl = URL.createObjectURL(file);
-        
+        // Assign a stable UUID so the file_id survives page reloads
+        const localId = 'local_' + crypto.randomUUID();
+
         // Extract title from filename (remove extension)
         const title = file.name.replace(/\.(epub|pdf)$/i, '');
 
-        // Create library entry
+        // Create library entry — fileUrl intentionally left null for local uploads;
+        // bytes live in IndexedDB under localId and a fresh blob URL is created on demand.
         const fic = {
-          title: title,
-          author: 'N/A',
-          fandom: 'N/A',
-          tags: 'N/A',
-          summary: 'N/A',
-          words: 'N/A',
-          category: 'N/A',
-          fileUrl: fileUrl,
-          ext: ext,
-          addedAt: new Date().toISOString()
+          id:            localId,
+          title:         title,
+          author:        'N/A',
+          fandom:        'N/A',
+          tags:          'N/A',
+          summary:       'N/A',
+          words:         'N/A',
+          category:      'N/A',
+          fileUrl:       null,        // resolved from IndexedDB at open time
+          ext:           ext,
+          isLocalUpload: true,
+          addedAt:       new Date().toISOString()
         };
 
-        addToLibrary(fic);
-        renderLibrary();
-        showPage('library');
-        
-        // Reset the input so the same file can be uploaded again if needed
+        // Persist raw bytes to IndexedDB so the file survives page reloads
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            await idbSaveFile(localId, e.target.result);
+          } catch (err) {
+            console.warn('IndexedDB save failed, falling back to blob URL:', err);
+            // Fallback: at least work for the current session
+            fic.fileUrl = URL.createObjectURL(file);
+          }
+          addToLibrary(fic);
+          renderLibrary();
+          showPage('library');
+          showToast(`Added "${title}" to library ✨`);
+        };
+        reader.readAsArrayBuffer(file);
+
+        // Reset input so the same file can be re-uploaded if needed
         event.target.value = '';
-        
-        // Show success message
-        showToast(`Added "${title}" to library ✨`);
       }
 
       function addToLibrary(fic) {
@@ -2409,8 +2473,11 @@
           fic.title = extractTitleFromUrl(fic.fileUrl);
         }
 
-        // Don't duplicate by fileUrl
-        const exists = library.find(f => f.fileUrl === fic.fileUrl);
+        // For local uploads, de-duplicate by id; for bot files, by fileUrl
+        const exists = fic.id
+          ? library.find(f => f.id === fic.id)
+          : (fic.fileUrl ? library.find(f => f.fileUrl === fic.fileUrl) : null);
+
         if (!exists) {
           library.unshift(fic);
           saveLibraryToStorage();
@@ -2556,8 +2623,12 @@
       function removeFromLibrary(idx) {
         const fic = _renderedFics[idx];
         if (!fic) return;
-        library = library.filter(f => f.fileUrl !== fic.fileUrl);
+        library = library.filter(f => f.id ? f.id !== fic.id : f.fileUrl !== fic.fileUrl);
         saveLibraryToStorage();
+        // If it was a local upload, also remove the bytes from IndexedDB
+        if (fic.isLocalUpload && fic.id) {
+          idbDeleteFile(fic.id).catch(() => {});
+        }
         renderLibrary();
         showToast('Removed from library.');
       }
@@ -2673,10 +2744,31 @@
         document.getElementById('reader-content-area').style.display = 'none';
         document.getElementById('toc-list').innerHTML = '';
 
-        if (fic.ext === 'pdf') {
-          loadPdf(fic.fileUrl);
+        if (fic.isLocalUpload) {
+          // File lives in IndexedDB — retrieve bytes and create a fresh blob URL
+          idbLoadFile(fic.id).then(arrayBuffer => {
+            if (!arrayBuffer) {
+              showReaderError('Local file not found. Please upload the file again using the Upload button.');
+              return;
+            }
+            const blob    = new Blob([arrayBuffer], { type: fic.ext === 'pdf' ? 'application/pdf' : 'application/epub+zip' });
+            const freshUrl = URL.createObjectURL(blob);
+            // Keep fileUrl up-to-date in memory (not persisted, so it stays ephemeral)
+            fic.fileUrl = freshUrl;
+            if (fic.ext === 'pdf') {
+              loadPdf(freshUrl);
+            } else {
+              loadEpub(freshUrl);
+            }
+          }).catch(err => {
+            showReaderError('Could not load local file: ' + err.message);
+          });
         } else {
-          loadEpub(fic.fileUrl);
+          if (fic.ext === 'pdf') {
+            loadPdf(fic.fileUrl);
+          } else {
+            loadEpub(fic.fileUrl);
+          }
         }
       }
 
