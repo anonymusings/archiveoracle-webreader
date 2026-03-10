@@ -76,36 +76,42 @@
     /* ═══════════════════════════════════════════
    COLLAPSIBLE CARD DETAILS
 ═══════════════════════════════════════════ */
+    /* details element itself — no summary, toggled via 𝒊 button */
     .card-details {
-      margin-top: 0.75rem;
-      border-top: 1px solid rgba(111, 31, 30, 0.2);
+      margin-top: 0.6rem;
     }
-    .card-details summary {
-      list-style: none;
-      cursor: pointer;
-      font-family: var(--font-display);
-      font-size: 0.58rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--ash-light);
-      padding: 0.45rem 0;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      user-select: none;
-      -webkit-user-select: none;
-      outline: none;
-    }
-    .card-details summary::-webkit-details-marker { display: none; }
-    .card-details summary::before {
-      content: '▸';
-      transition: transform 0.2s;
-      font-size: 0.6rem;
-      color: var(--crimson-pale);
-    }
-    .card-details[open] summary::before { transform: rotate(90deg); }
+    .card-details summary { display: none; }  /* we use the 𝒊 button instead */
     .card-details-body {
-      padding-bottom: 0.5rem;
+      padding-bottom: 0.4rem;
+    }
+    /* 𝒊 info button — inline with the ext badge */
+    .card-info-btn {
+      background: none;
+      border: 1px solid rgba(111, 31, 30, 0.45);
+      border-radius: 50%;
+      color: var(--crimson-pale, #c9595a);
+      font-style: italic;
+      font-family: "Crimson Pro", Georgia, serif;
+      font-size: 0.72rem;
+      line-height: 1;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-left: 0.35rem;
+      vertical-align: middle;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      padding: 0;
+      position: relative;
+      top: -1px;
+    }
+    .card-info-btn:hover {
+      background: rgba(111, 31, 30, 0.2);
+      border-color: var(--crimson-pale, #c9595a);
+      color: #f0d8c0;
     }
     /* Sidebar collapsible */
     .sidebar-details {
@@ -2451,6 +2457,7 @@
               relationships: params.get('relationships') || '',
               characters:    params.get('characters')    || '',
               summary:       params.get('summary')       || '',
+              origin_msg_id: params.get('origin_msg_id') || '',
               ext:           extParam,
               fileUrl:       fileUrl,
               addedAt:       new Date().toISOString()
@@ -2527,6 +2534,9 @@
             console.warn('IndexedDB save failed, falling back to blob URL:', err);
             fic.fileUrl = URL.createObjectURL(file);
           }
+          // For locally-uploaded files the filename is often "Title - Author - Fandom.epub"
+          fic.title = cleanUploadedTitle(fic.title);
+
           // Try to extract metadata server-side so cards get full tags/summary
           try {
             const fd = new FormData();
@@ -2534,7 +2544,13 @@
             const res = await fetch(`${SERVER_URL}/extract-metadata`, { method: 'POST', body: fd });
             if (res.ok) {
               const meta = await res.json();
-              if (meta.title  && meta.title  !== 'N/A') fic.title  = meta.title;
+              // Prefer cleaned meta title, but don't let server return a longer filename string
+              if (meta.title && meta.title !== 'N/A') {
+                const metaCleaned = cleanUploadedTitle(meta.title);
+                if (!fic.title || fic.title === 'Untitled' || metaCleaned.length < fic.title.length + 10) {
+                  fic.title = metaCleaned;
+                }
+              }
               if (meta.author && meta.author !== 'N/A') fic.author = meta.author;
               ['fandom','relationships','characters','tags','warning',
                'category','rating','words','summary'].forEach(k => {
@@ -2697,9 +2713,12 @@
         const tagsHtml     = hasTags     ? fic.tags.split(',').slice(0,5).map(t=>`<span class="fic-chip">${escHtml(t.trim())}</span>`).join('') : '';
         const summaryHtml  = hasSummary  ? `<div class="fic-card-summary">${escHtml(fic.summary)}</div>` : '';
 
+        // 𝒊 button shown inline with the ext badge — only if there is details content
+        const infoBtn = hasAny ? `<button class="card-info-btn" title="Details"
+          onclick="event.stopPropagation();this.closest('.fic-card').querySelector('.card-details').toggleAttribute('open')">𝒊</button>` : '';
+
         const detailsSection = hasAny ? `
-      <details class="card-details" onclick="event.stopPropagation()">
-        <summary>Details</summary>
+      <details class="card-details">
         <div class="card-details-body">
           ${fandomHtml}
           <div class="fic-card-meta">${ratingChip}${categoryChip}${wordsChip}${warningChip}</div>
@@ -2710,7 +2729,7 @@
 
         return `
     <div class="fic-card" onclick="openReader(_renderedFics[${idx}])">
-      <div class="fic-card-ext"><span class="fic-card-ext-dot"></span>${icon} ${fic.ext.toUpperCase()}</div>
+      <div class="fic-card-ext"><span class="fic-card-ext-dot"></span>${icon} ${fic.ext.toUpperCase()} ${infoBtn}</div>
       <div class="fic-card-title">${escHtml(fic.title)}</div>
       <div class="fic-card-author">${fic.author && fic.author !== 'N/A' ? 'by ' + escHtml(fic.author) : ''}</div>
       ${detailsSection}
@@ -3507,6 +3526,17 @@
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
+      /**
+       * Many fanfic tools produce filenames: "Story Title - AuthorName - Fandom.epub"
+       * When EPUB metadata is absent, the scraper uses the filename as title.
+       * This returns only the first segment. Only applied to uploaded files.
+       */
+      function cleanUploadedTitle(rawTitle) {
+        if (!rawTitle) return rawTitle;
+        const parts = rawTitle.split(' - ');
+        return parts.length >= 2 ? parts[0].trim() : rawTitle;
+      }
+
       // Sanitise EPUB HTML — keep structure, strip scripts/iframes
       function sanitiseHtml(html) {
         const tmp = document.createElement('div');
@@ -3661,6 +3691,7 @@
                 title: fic.title || 'Untitled',
                 user_id: userId || '',
                 message_id: null,
+                origin_msg_id: fic.origin_msg_id || null,
                 last_position: null, bookmarks: [], highlights: [] };
 
         // Load from localStorage first (instant)
@@ -3729,7 +3760,8 @@
         updateRibbonCount();
       }
 
-      /** Auto-save current scroll position every 60s. */
+      /** Auto-save current scroll position to localStorage and server silently.
+       *  bubble=false → server stores state but sends NO Telegram message. */
       function autoSavePosition() {
         if (!currentFic) return;
         const main = document.getElementById('reader-main');
@@ -3740,7 +3772,7 @@
                               scroll_percent: Math.round(pct * 10) / 10,
                               timestamp: new Date().toISOString() };
         persistState();
-        syncToTelegram();
+        syncToTelegram(false);  // silent server sync, no Telegram message
       }
 
       /** Sync full state to Telegram.
@@ -3764,6 +3796,7 @@
               user_id:    _rs.user_id,
               message_id: _rs.message_id,
               bubble:     !!bubble,
+              reply_to:   _rs.origin_msg_id || null,   // reply to original file message
               state: { file_id: _rs.file_id, title: _rs.title,
                        last_position: _rs.last_position,
                        bookmarks: _rs.bookmarks, highlights: _rs.highlights }
