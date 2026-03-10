@@ -76,20 +76,23 @@
     /* ═══════════════════════════════════════════
    COLLAPSIBLE CARD DETAILS
 ═══════════════════════════════════════════ */
-    /* details element itself — no summary, toggled via 𝒊 button */
+    /* Card details panel — toggled via 𝒊 button, NOT a <details> element */
     .card-details {
       margin-top: 0.6rem;
+      display: none;         /* hidden by default */
     }
-    .card-details summary { display: none; }  /* we use the 𝒊 button instead */
+    .card-details.open {
+      display: block;
+    }
     .card-details-body {
       padding-bottom: 0.4rem;
     }
-    /* 𝒊 info button — inline with the ext badge */
+    /* 𝒊 info button — inline with the ext badge, same muted colour as author name */
     .card-info-btn {
       background: none;
-      border: 1px solid rgba(111, 31, 30, 0.45);
+      border: 1px solid rgba(154, 136, 120, 0.4);
       border-radius: 50%;
-      color: var(--crimson-pale, #c9595a);
+      color: var(--ash-light);
       font-style: italic;
       font-family: "Crimson Pro", Georgia, serif;
       font-size: 0.72rem;
@@ -108,9 +111,10 @@
       position: relative;
       top: -1px;
     }
-    .card-info-btn:hover {
-      background: rgba(111, 31, 30, 0.2);
-      border-color: var(--crimson-pale, #c9595a);
+    .card-info-btn:hover,
+    .card-info-btn.active {
+      background: rgba(154, 136, 120, 0.15);
+      border-color: var(--ash-light);
       color: #f0d8c0;
     }
     /* Sidebar collapsible */
@@ -2691,6 +2695,9 @@
       let _renderedFics = [];
 
       function ficCard(fic, idx) {
+        // For locally-uploaded files already in library, clean stale "Title - Author - Fandom" filenames
+        if (fic.isLocalUpload && fic.title) fic.title = cleanUploadedTitle(fic.title);
+
         const icon = fic.ext === 'epub'
           ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
           : '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
@@ -2715,17 +2722,20 @@
 
         // 𝒊 button shown inline with the ext badge — only if there is details content
         const infoBtn = hasAny ? `<button class="card-info-btn" title="Details"
-          onclick="event.stopPropagation();this.closest('.fic-card').querySelector('.card-details').toggleAttribute('open')">𝒊</button>` : '';
+          onclick="event.stopPropagation();
+            var d=this.closest('.fic-card').querySelector('.card-details');
+            d.classList.toggle('open');
+            this.classList.toggle('active');">𝒊</button>` : '';
 
         const detailsSection = hasAny ? `
-      <details class="card-details">
+      <div class="card-details">
         <div class="card-details-body">
           ${fandomHtml}
           <div class="fic-card-meta">${ratingChip}${categoryChip}${wordsChip}${warningChip}</div>
           ${tagsHtml ? `<div class="fic-card-meta" style="margin-top:0.4rem">${tagsHtml}</div>` : ''}
           ${summaryHtml}
         </div>
-      </details>` : '';
+      </div>` : '';
 
         return `
     <div class="fic-card" onclick="openReader(_renderedFics[${idx}])">
