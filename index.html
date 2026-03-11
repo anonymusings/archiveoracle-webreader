@@ -624,6 +624,13 @@
     }
 
     /* Hide library search on larger screens (header search is available) */
+    /* Desktop: sidebar always visible, so show settings btn whenever reader is active */
+    @media (min-width: 769px) {
+      #page-reader.active .sidebar-settings-btn {
+        display: flex;
+      }
+    }
+
     @media (min-width: 900px) {
       .library-search-box {
         display: none;
@@ -1549,28 +1556,24 @@
     ═══════════════════════════════════════════ */
 
     /* Settings Button */
-    /* Sidebar footer — real flex child, always visible at bottom */
-    .sidebar-footer {
-      display: none;
-    }
-
+    /* Settings button — fixed bottom-right, mirrors the arrow button, shown only when sidebar is open */
     .sidebar-settings-btn {
-      position: absolute;
-      bottom: 5.5rem; /* = 1.5rem visual + 4rem (64px header) because sidebar bottom overflows viewport */
+      position: fixed;
+      bottom: 1.5rem;
       right: 1.5rem;
-      width: 2.15rem;
-      height: 2.15rem;
+      width: 44px;
+      height: 44px;
       background: transparent;
       border: 1px solid rgba(197, 165, 128, 0.3);
       border-radius: 1px;
       cursor: pointer;
-      display: flex;
+      display: none; /* hidden by default; JS shows it when sidebar opens */
       align-items: center;
       justify-content: center;
       font-size: 1.45rem;
       color: var(--ash);
       transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
-      z-index: 200;
+      z-index: 301; /* same level as sidebar-toggle */
     }
 
     .sidebar-settings-btn:hover {
@@ -1591,8 +1594,8 @@
 
     /* Settings Dialog */
     .settings-dialog {
-      position: absolute;
-      bottom: 9rem;
+      position: fixed;
+      bottom: 5rem;
       right: 1.5rem;
       width: 240px;
       background: var(--smoke-light);
@@ -1684,8 +1687,8 @@
 
     /* Confirmation Dialog */
     .confirmation-dialog {
-      position: absolute;
-      bottom: 9rem;
+      position: fixed;
+      bottom: 5rem;
       right: 1.5rem;
       width: 240px;
       background: var(--smoke-light);
@@ -1911,15 +1914,6 @@
 
       .reader-sidebar.open {
         transform: translateX(0);
-      }
-
-      /* Mobile: sidebar is position:fixed bottom:0 — no header offset needed */
-      .sidebar-settings-btn {
-        bottom: 1.5rem;
-      }
-      .settings-dialog,
-      .confirmation-dialog {
-        bottom: 5.5rem;
       }
 
       .sidebar-toggle {
@@ -3274,17 +3268,26 @@
       function toggleSidebar() {
         const sidebar = document.getElementById('reader-sidebar');
         const toggleBtn = document.getElementById('sidebar-toggle');
+        const settingsBtn = document.getElementById('settings-button');
 
         sidebar.classList.toggle('open');
         toggleBtn.classList.toggle('open');
 
-        if (sidebar.classList.contains('open')) {
+        const isOpen = sidebar.classList.contains('open');
+
+        if (isOpen) {
           // Arrow Right
           toggleBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
         } else {
           // Hamburger
           toggleBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+          // Close settings dialog if sidebar is closing
+          const settingsDialog = document.getElementById('settings-dialog');
+          if (settingsDialog) settingsDialog.style.display = 'none';
+          if (settingsBtn) settingsBtn.classList.remove('active');
         }
+
+        if (settingsBtn) settingsBtn.style.display = isOpen ? 'flex' : 'none';
       }
 
       // Cookie utility functions
