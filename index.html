@@ -1551,7 +1551,7 @@
     /* Settings Button */
     .sidebar-settings-btn {
       position: absolute;
-      bottom: 5.5rem;
+      bottom: 1.5rem;
       right: 1.5rem;
       width: 2.15rem;
       height: 2.15rem;
@@ -1562,9 +1562,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
+      font-size: 1.45rem;
       color: var(--ash);
-      transition: border-color 0.2s, color 0.2s;
+      transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
       z-index: 200;
     }
 
@@ -1573,19 +1573,21 @@
       color: var(--ash-light);
     }
 
-    .sidebar-settings-btn.active,
-    .sidebar-settings-btn:active,
+    .sidebar-settings-btn.active {
+      border-color: var(--crimson);
+      color: var(--crimson-pale);
+      box-shadow: 0 0 10px rgba(111, 31, 30, 0.6), inset 0 0 6px rgba(111, 31, 30, 0.2);
+    }
+
     .sidebar-settings-btn:focus {
-      background: transparent;
       outline: none;
-      box-shadow: none;
       -webkit-tap-highlight-color: transparent;
     }
 
     /* Settings Dialog */
     .settings-dialog {
       position: absolute;
-      bottom: 9rem;
+      bottom: 5rem;
       right: 1.5rem;
       width: 240px;
       background: var(--smoke-light);
