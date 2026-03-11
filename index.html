@@ -1551,14 +1551,13 @@
     /* Settings Button */
     /* Sidebar footer — real flex child, always visible at bottom */
     .sidebar-footer {
-      flex-shrink: 0;
-      padding: 1rem 1.5rem 1.5rem;
-      display: flex;
-      justify-content: flex-end;
-      position: relative; /* anchor for the settings dialog */
+      display: none;
     }
 
     .sidebar-settings-btn {
+      position: absolute;
+      bottom: 5.5rem; /* = 1.5rem visual + 4rem (64px header) because sidebar bottom overflows viewport */
+      right: 1.5rem;
       width: 2.15rem;
       height: 2.15rem;
       background: transparent;
@@ -1593,9 +1592,8 @@
     /* Settings Dialog */
     .settings-dialog {
       position: absolute;
-      bottom: 100%;
-      right: 0;
-      margin-bottom: 0.5rem;
+      bottom: 9rem;
+      right: 1.5rem;
       width: 240px;
       background: var(--smoke-light);
       border: 1px solid rgba(111, 31, 30, 0.5);
@@ -1687,9 +1685,8 @@
     /* Confirmation Dialog */
     .confirmation-dialog {
       position: absolute;
-      bottom: 100%;
-      right: 0;
-      margin-bottom: 0.5rem;
+      bottom: 9rem;
+      right: 1.5rem;
       width: 240px;
       background: var(--smoke-light);
       border: 1px solid rgba(111, 31, 30, 0.5);
@@ -1914,6 +1911,15 @@
 
       .reader-sidebar.open {
         transform: translateX(0);
+      }
+
+      /* Mobile: sidebar is position:fixed bottom:0 — no header offset needed */
+      .sidebar-settings-btn {
+        bottom: 1.5rem;
+      }
+      .settings-dialog,
+      .confirmation-dialog {
+        bottom: 5.5rem;
       }
 
       .sidebar-toggle {
@@ -2151,10 +2157,8 @@
           </div>
         </div>
 
-        <!-- Sidebar Footer: settings button pinned at bottom as a real flex child -->
-        <div class="sidebar-footer">
-          <button id="settings-button" class="sidebar-settings-btn" title="Settings">⟡</button>
-        </div>
+        <!-- Settings button — mirrors arrow button position (bottom-right of sidebar) -->
+        <button id="settings-button" class="sidebar-settings-btn" title="Settings">⟡</button>
 
         <!-- Settings Dialog -->
         <div id="settings-dialog" class="settings-dialog" style="display: none;">
