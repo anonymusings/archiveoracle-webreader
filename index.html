@@ -1549,10 +1549,16 @@
     ═══════════════════════════════════════════ */
 
     /* Settings Button */
+    /* Sidebar footer — real flex child, always visible at bottom */
+    .sidebar-footer {
+      flex-shrink: 0;
+      padding: 1rem 1.5rem 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+      position: relative; /* anchor for the settings dialog */
+    }
+
     .sidebar-settings-btn {
-      position: absolute;
-      bottom: 5.5rem; /* 1.5rem visual + 4rem(64px header) since sidebar bottom extends past viewport */
-      right: 1.5rem;
       width: 2.15rem;
       height: 2.15rem;
       background: transparent;
@@ -1587,8 +1593,9 @@
     /* Settings Dialog */
     .settings-dialog {
       position: absolute;
-      bottom: 9rem;
-      right: 1.5rem;
+      bottom: 100%;
+      right: 0;
+      margin-bottom: 0.5rem;
       width: 240px;
       background: var(--smoke-light);
       border: 1px solid rgba(111, 31, 30, 0.5);
@@ -1680,8 +1687,9 @@
     /* Confirmation Dialog */
     .confirmation-dialog {
       position: absolute;
-      bottom: 9rem;
-      right: 1.5rem;
+      bottom: 100%;
+      right: 0;
+      margin-bottom: 0.5rem;
       width: 240px;
       background: var(--smoke-light);
       border: 1px solid rgba(111, 31, 30, 0.5);
@@ -1902,14 +1910,6 @@
         /* Increased to ensure buttons on top */
         transform: translateX(-100%);
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
-      }
-
-      .sidebar-settings-btn {
-        bottom: 1.5rem; /* mobile: sidebar is fixed with bottom:0, no header offset needed */
-      }
-
-      .settings-dialog {
-        bottom: 5rem;
       }
 
       .reader-sidebar.open {
@@ -2151,8 +2151,10 @@
           </div>
         </div>
 
-        <!-- Settings Button -->
-        <button id="settings-button" class="sidebar-settings-btn" title="Settings">⟡</button>
+        <!-- Sidebar Footer: settings button pinned at bottom as a real flex child -->
+        <div class="sidebar-footer">
+          <button id="settings-button" class="sidebar-settings-btn" title="Settings">⟡</button>
+        </div>
 
         <!-- Settings Dialog -->
         <div id="settings-dialog" class="settings-dialog" style="display: none;">
@@ -2533,8 +2535,8 @@
         // Assign a stable UUID so the file_id survives page reloads
         const localId = 'local_' + crypto.randomUUID();
 
-        // Extract title from filename (remove extension)
-        const title = file.name.replace(/\.(epub|pdf)$/i, '');
+        // Extract title from filename (remove extension, replace underscores)
+        const title = file.name.replace(/\.(epub|pdf)$/i, '').replace(/_/g, ' ').trim();
 
         // Create library entry — fileUrl intentionally left null for local uploads;
         // bytes live in IndexedDB under localId and a fresh blob URL is created on demand.
@@ -3597,8 +3599,10 @@
        */
       function cleanUploadedTitle(rawTitle) {
         if (!rawTitle) return rawTitle;
-        const parts = rawTitle.split(' - ');
-        return parts.length >= 2 ? parts[0].trim() : rawTitle;
+        // Replace underscores with spaces first
+        const cleaned = rawTitle.replace(/_/g, ' ').trim();
+        const parts = cleaned.split(' - ');
+        return parts.length >= 2 ? parts[0].trim() : cleaned;
       }
 
       // Sanitise EPUB HTML — keep structure, strip scripts/iframes
