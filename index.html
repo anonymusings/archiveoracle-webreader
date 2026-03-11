@@ -117,84 +117,35 @@
       border-color: var(--ash-light);
       color: #f0d8c0;
     }
-    /* Sidebar collapsible — button-driven, same style as card-info-btn */
+    /* Sidebar collapsible */
     .sidebar-details {
       margin-top: 0.6rem;
       border-top: 1px solid rgba(111, 31, 30, 0.2);
-      display: none; /* hidden by default, shown when book loaded */
     }
-    .sidebar-details-body {
-      padding: 0.4rem 0 0.2rem;
-    }
-
-    /* Sidebar meta positioning for absolute children */
-    .sidebar-meta {
-      position: relative;
-    }
-
-    /* Sidebar 𝒊 info button — lower-left of sidebar-meta, identical to card-info-btn */
-    .sidebar-info-btn {
-      background: none;
-      border: 1px solid rgba(154, 136, 120, 0.4);
-      border-radius: 50%;
-      color: var(--ash-light);
-      font-style: italic;
-      font-family: "Crimson Pro", Georgia, serif;
-      font-size: 0.72rem;
-      line-height: 1;
-      width: 18px;
-      height: 18px;
-      min-width: 18px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+    .sidebar-details summary {
+      list-style: none;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      padding: 0;
-      position: absolute;
-      bottom: 0.85rem;
-      left: 1.5rem;
-    }
-    .sidebar-info-btn:hover,
-    .sidebar-info-btn.active {
-      background: rgba(154, 136, 120, 0.15);
-      border-color: var(--ash-light);
-      color: #f0d8c0;
-    }
-
-    /* Sidebar bookmark button — upper-right of sidebar-meta, circle like card-info-btn */
-    .sidebar-bookmark-btn {
-      background: none;
-      border: 1px solid rgba(154, 136, 120, 0.4);
-      border-radius: 50%;
-      color: var(--ash-light);
-      width: 28px;
-      height: 28px;
-      min-width: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, border-color 0.15s;
-      padding: 0;
-      position: absolute;
-      top: 1rem;
-      right: 1.25rem;
-    }
-    .sidebar-bookmark-btn:hover {
-      background: rgba(154, 136, 120, 0.15);
-      border-color: var(--ash-light);
-      color: #f0d8c0;
-    }
-    .sidebar-bookmark-btn .sb-count {
-      font-size: 8px;
       font-family: var(--font-display);
-      color: rgba(245, 230, 208, 0.7);
-      position: absolute;
-      bottom: 2px;
-      right: 2px;
-      line-height: 1;
+      font-size: 0.55rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ash);
+      padding: 0.4rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      user-select: none;
+      -webkit-user-select: none;
+      outline: none;
     }
+    .sidebar-details summary::-webkit-details-marker { display: none; }
+    .sidebar-details summary::before {
+      content: '▸';
+      transition: transform 0.2s;
+      font-size: 0.55rem;
+      color: var(--crimson-pale);
+    }
+    .sidebar-details[open] summary::before { transform: rotate(90deg); }
 
     /* ═══════════════════════════════════════════
    SCROLLBAR
@@ -760,6 +711,15 @@
       display: inline-block;
     }
 
+    /* Pin badge — shown on library cards pinned via Telegram */
+    .fic-card-pin {
+      margin-left: auto;
+      font-size: 0.7rem;
+      opacity: 0.85;
+      line-height: 1;
+      title: "Pinned";
+    }
+
     .fic-card-title {
       font-family: var(--font-body);
       font-size: 1.15rem;
@@ -1274,8 +1234,21 @@
     .epub-chapter mark[data-color="#6d5c5c"] { background:#6d5c5c; color:#fff; }
 
     /* ── Bookmark ribbon ──────────────────────────────── */
-    /* #bookmark-ribbon-btn is now .sidebar-bookmark-btn inside the sidebar */
-    #bookmark-ribbon-btn { display: none !important; }
+    #bookmark-ribbon-btn {
+      position: fixed; top: 5rem; right: 0; z-index: 300;
+      width: 36px; height: 64px;
+      background: transparent; border: none;
+      border-radius: 4px 0 0 4px; cursor: pointer;
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px;
+      box-shadow: none;
+      transition: transform 0.3s var(--ease-out), opacity 0.3s var(--ease-out); padding: 0;
+    }
+    #bookmark-ribbon-btn:hover { transform:translateX(-3px); }
+    #bookmark-ribbon-btn.hidden { transform: translateX(100%); opacity: 0; }
+    #bookmark-ribbon-btn .ribbon-icon { display:flex; align-items:center; justify-content:center; }
+    #bookmark-ribbon-btn .ribbon-count { font-size:9px; color:rgba(245,230,208,0.7); letter-spacing:0.05em; font-family:var(--font-display); }
+    #page-reader.active #bookmark-ribbon-btn.has-items { display: flex; }
 
     /* ── Invisible tap zone (top-right corner, KOReader style) ── */
     #reader-tap-bookmark {
@@ -2140,21 +2113,11 @@
               </svg> Back to Library</button>
             <div class="sidebar-title" id="sidebar-title">—</div>
             <div class="sidebar-author" id="sidebar-author"></div>
-            <div class="sidebar-details" id="sidebar-details" style="display:none">
-              <div class="sidebar-details-body">
-                <div class="sidebar-tags" id="sidebar-tags"></div>
-                <div class="sidebar-summary" id="sidebar-summary"></div>
-              </div>
-            </div>
-            <!-- 𝒊 button — lower-left, same style as library card info btn -->
-            <button class="sidebar-info-btn" id="sidebar-info-btn" title="Book details" style="display:none" onclick="toggleSidebarDetails()">𝒊</button>
-            <!-- Bookmark access button — upper-right, circle like 𝒊 btn -->
-            <button class="sidebar-bookmark-btn" id="sidebar-bookmark-btn" title="Bookmarks & Highlights" style="display:none" onclick="openBhnModal('bookmarks')">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="14" height="14">
-                <path d="M6 3H18V21L12 16.5L6 21V3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-              </svg>
-              <span class="sb-count" id="sb-count"></span>
-            </button>
+            <details class="sidebar-details" id="sidebar-details" style="display:none">
+              <summary>Details</summary>
+              <div class="sidebar-tags" id="sidebar-tags"></div>
+              <div class="sidebar-summary" id="sidebar-summary"></div>
+            </details>
           </div>
           <div class="sidebar-toc">
             <div class="toc-heading">Contents</div>
@@ -2236,9 +2199,8 @@
         <span class="ribbon-count" id="ribbon-count"></span>
       </button>
 
-      <!-- Invisible tap zone: top-right corner adds a bookmark only (KOReader style) -->
-      <!-- Opening bookmarks is now via the sidebar bookmark button -->
-      <div id="reader-tap-bookmark" onclick="addBookmark()" title=""></div>
+      <!-- Invisible tap zone: top-right corner adds a bookmark (KOReader style) -->
+      <div id="reader-tap-bookmark" onclick="handleTapBookmark()" title=""></div>
 
     </div><!-- /reader-layout -->
 
@@ -2297,6 +2259,7 @@
       const SERVER_URL = window.ORACLE_SERVER_URL || 'https://archiveoraclewebreader-helpers.onrender.com';
 
       let library = [];       // array of fic metadata objects
+      let _pinnedFileIds = new Set(); // Telegram file_ids currently pinned (fetched from server)
       let currentFic = null;  // currently open fic
       let pdfDoc = null;
       let currentPdfPage = 1;
@@ -2684,22 +2647,30 @@
         const navBtn = document.getElementById('nav-' + name);
         if (navBtn) navBtn.classList.add('active');
 
-        if (name === 'library') renderLibrary();
+        if (name === 'library') { syncPinnedFromServer(); renderLibrary(); }
         if (name === 'search') { renderSearch(''); document.getElementById('main-search-input').focus(); }
       }
 
-      function backToLibrary() {
-        // Hide reader-specific sidebar buttons
-        const infoBtn = document.getElementById('sidebar-info-btn');
-        const sbBtn = document.getElementById('sidebar-bookmark-btn');
-        if (infoBtn) infoBtn.style.display = 'none';
-        if (sbBtn) sbBtn.style.display = 'none';
-        showPage('library');
-      }
+      function backToLibrary() { showPage('library'); }
 
       // ═══════════════════════════════════════════
       // LIBRARY RENDER
       // ═══════════════════════════════════════════
+      /** Fetch pinned file_ids from the server library sheet and refresh cards. */
+      async function syncPinnedFromServer() {
+        try {
+          const res = await fetch(`${SERVER_URL}/library`);
+          if (!res.ok) return;
+          const rows = await res.json();
+          const newSet = new Set();
+          rows.forEach(row => {
+            if (row.pinned === 'TRUE' && row.file_id) newSet.add(row.file_id);
+          });
+          _pinnedFileIds = newSet;
+          renderLibrary(); // re-render now that pin states are known
+        } catch (e) { /* server offline — silently skip */ }
+      }
+
       function renderLibrary() {
         const grid = document.getElementById('library-grid');
         const extFilter = document.getElementById('filter-ext').value;
@@ -2791,9 +2762,12 @@
         </div>
       </div>` : '';
 
+        const isPinned = fic.pinned === 'TRUE' || fic.pinned === true || _pinnedFileIds.has(fic.id || '');
+        const pinBadge = isPinned ? `<span class="fic-card-pin" title="Pinned">📌</span>` : '';
+
         return `
     <div class="fic-card" onclick="openReader(_renderedFics[${idx}])">
-      <div class="fic-card-ext"><span class="fic-card-ext-dot"></span>${icon} ${fic.ext.toUpperCase()} ${infoBtn}</div>
+      <div class="fic-card-ext"><span class="fic-card-ext-dot"></span>${icon} ${fic.ext.toUpperCase()} ${infoBtn}${pinBadge}</div>
       <div class="fic-card-title">${escHtml(fic.title)}</div>
       <div class="fic-card-author">${fic.author && fic.author !== 'N/A' ? 'by ' + escHtml(fic.author) : ''}</div>
       ${detailsSection}
@@ -2926,13 +2900,7 @@
         tagsEl.innerHTML = tagList.map(t => `<span class="sidebar-tag">${escHtml(t)}</span>`).join('');
         const hasSidebarContent = tagList.length > 0 || (fic.summary && fic.summary !== 'N/A');
         const sidebarDetails = document.getElementById('sidebar-details');
-        // Keep details collapsed on load; show the 𝒊 btn only if there's content
-        if (sidebarDetails) sidebarDetails.style.display = 'none';
-        const infoBtn = document.getElementById('sidebar-info-btn');
-        if (infoBtn) infoBtn.style.display = hasSidebarContent ? 'inline-flex' : 'none';
-        // Always show sidebar bookmark button in reader
-        const sbBtn = document.getElementById('sidebar-bookmark-btn');
-        if (sbBtn) sbBtn.style.display = 'inline-flex';
+        if (sidebarDetails) sidebarDetails.style.display = hasSidebarContent ? '' : 'none';
 
         // Show loading
         document.getElementById('reader-loading').style.display = 'flex';
@@ -3715,6 +3683,7 @@
 
         const header = document.querySelector('header');
         const sidebarToggle = document.getElementById('sidebar-toggle');
+        const bookmarkRibbon = document.getElementById('bookmark-ribbon-btn');
         const readerMain = document.getElementById('reader-main');
         const currentScrollY = readerMain.scrollTop;
 
@@ -3727,11 +3696,13 @@
             // Scrolling DOWN: Hide controls
             header.classList.add('hidden');
             sidebarToggle?.classList.add('hidden');
+            bookmarkRibbon?.classList.add('hidden');
             document.body.classList.add('reader-fullscreen');
           } else if (delta < 0) {
             // Scrolling UP: Immediately show controls
             header.classList.remove('hidden');
             sidebarToggle?.classList.remove('hidden');
+            bookmarkRibbon?.classList.remove('hidden');
             document.body.classList.remove('reader-fullscreen');
           }
           lastScrollY = currentScrollY;
@@ -3916,23 +3887,10 @@
 
       function updateRibbonCount() {
         const n = _rs.bookmarks.length + _rs.highlights.length;
-        // legacy ribbon (hidden, kept for compat)
         const el = document.getElementById('ribbon-count');
         const btn = document.getElementById('bookmark-ribbon-btn');
         if (el) el.textContent = n > 0 ? n : '';
         if (btn) btn.classList.toggle('has-items', n > 0);
-        // new sidebar bookmark button
-        const sbCount = document.getElementById('sb-count');
-        if (sbCount) sbCount.textContent = n > 0 ? n : '';
-      }
-
-      function toggleSidebarDetails() {
-        const det = document.getElementById('sidebar-details');
-        const btn = document.getElementById('sidebar-info-btn');
-        if (!det) return;
-        const open = det.style.display !== 'none';
-        det.style.display = open ? 'none' : 'block';
-        if (btn) btn.classList.toggle('active', !open);
       }
 
 
@@ -3977,16 +3935,16 @@
         updateRibbonCount();
       }
 
-      /** KOReader-style: tap top-right corner to add bookmark, flash the sidebar bookmark btn. */
+      /** KOReader-style: tap top-right corner to add bookmark, flash the ribbon. */
       function handleTapBookmark() {
         addBookmark();
-        const btn = document.getElementById('sidebar-bookmark-btn');
+        const btn = document.getElementById('bookmark-ribbon-btn');
         if (btn) {
-          btn.style.background = 'rgba(154, 136, 120, 0.35)';
-          btn.style.borderColor = 'var(--ash-light)';
+          btn.style.transform = 'translateX(-8px)';
+          btn.style.opacity = '1';
           setTimeout(() => {
-            btn.style.background = '';
-            btn.style.borderColor = '';
+            btn.style.transform = '';
+            btn.style.opacity = '';
           }, 400);
         }
       }
