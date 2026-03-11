@@ -117,35 +117,40 @@
       border-color: var(--ash-light);
       color: #f0d8c0;
     }
-    /* Sidebar collapsible */
-    .sidebar-details {
-      margin-top: 0.6rem;
+    /* Sidebar collapsible content (no native <details>) */
+    .sidebar-details-content {
+      margin-top: 0.5rem;
       border-top: 1px solid rgba(111, 31, 30, 0.2);
+      padding-top: 0.5rem;
     }
-    .sidebar-details summary {
-      list-style: none;
-      cursor: pointer;
-      font-family: var(--font-display);
-      font-size: 0.55rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--ash);
-      padding: 0.4rem 0;
-      display: flex;
+
+    /* 𝒊 toggle button — lower-left of sidebar-meta, same style as card-info-btn */
+    .sidebar-info-btn {
+      background: none;
+      border: 1px solid rgba(154, 136, 120, 0.4);
+      border-radius: 50%;
+      color: var(--ash-light);
+      font-style: italic;
+      font-family: "Crimson Pro", Georgia, serif;
+      font-size: 0.72rem;
+      line-height: 1;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      display: none; /* shown by JS when there's content */
       align-items: center;
-      gap: 0.4rem;
-      user-select: none;
-      -webkit-user-select: none;
-      outline: none;
+      justify-content: center;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      padding: 0;
     }
-    .sidebar-details summary::-webkit-details-marker { display: none; }
-    .sidebar-details summary::before {
-      content: '▸';
-      transition: transform 0.2s;
-      font-size: 0.55rem;
-      color: var(--crimson-pale);
+    .sidebar-info-btn:hover,
+    .sidebar-info-btn.active {
+      background: rgba(154, 136, 120, 0.15);
+      border-color: var(--ash-light);
+      color: #f0d8c0;
     }
-    .sidebar-details[open] summary::before { transform: rotate(90deg); }
 
     /* ═══════════════════════════════════════════
    SCROLLBAR
@@ -987,19 +992,9 @@
       font-style: italic;
       color: var(--ash-light);
       line-height: 1.6;
-      max-height: 80px;
-      overflow: hidden;
+      max-height: 160px;
+      overflow-y: auto;
       position: relative;
-    }
-
-    .sidebar-summary::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      height: 24px;
-      background: linear-gradient(transparent, var(--ink-soft));
     }
 
     .sidebar-toc {
@@ -1233,31 +1228,52 @@
     .epub-chapter mark[data-color="#8d9f72"] { background:#8d9f72; color:#1a2010; }
     .epub-chapter mark[data-color="#6d5c5c"] { background:#6d5c5c; color:#fff; }
 
-    /* ── Bookmark ribbon ──────────────────────────────── */
-    #bookmark-ribbon-btn {
-      position: fixed; top: 5rem; right: 0; z-index: 300;
-      width: 36px; height: 64px;
-      background: transparent; border: none;
-      border-radius: 4px 0 0 4px; cursor: pointer;
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center; gap: 3px;
-      box-shadow: none;
-      transition: transform 0.3s var(--ease-out), opacity 0.3s var(--ease-out); padding: 0;
+    /* Sidebar header row: back-to-library + bookmark button side by side */
+    .sidebar-header-row {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      align-items: stretch;
     }
-    #bookmark-ribbon-btn:hover { transform:translateX(-3px); }
-    #bookmark-ribbon-btn.hidden { transform: translateX(100%); opacity: 0; }
-    #bookmark-ribbon-btn .ribbon-icon { display:flex; align-items:center; justify-content:center; }
-    #bookmark-ribbon-btn .ribbon-count { font-size:9px; color:rgba(245,230,208,0.7); letter-spacing:0.05em; font-family:var(--font-display); }
-    #page-reader.active #bookmark-ribbon-btn.has-items { display: flex; }
+    .sidebar-back-btn {
+      flex: 1;
+      margin-bottom: 0 !important;
+      width: auto !important;
+    }
 
-    /* ── Invisible tap zone (top-right corner, KOReader style) ── */
+    /* ── Bookmark button inside sidebar ──────────────────── */
+    #bookmark-ribbon-btn {
+      background: transparent;
+      border: 1px solid rgba(197, 165, 128, 0.3);
+      border-radius: 1px;
+      color: rgba(197, 165, 128, 0.45);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      padding: 0 0.55rem;
+      flex-shrink: 0;
+      transition: border-color 0.2s, color 0.2s;
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+    }
+    #bookmark-ribbon-btn:hover {
+      border-color: var(--crimson-pale);
+      color: var(--ash-light);
+    }
+    #bookmark-ribbon-btn .ribbon-icon { display:flex; align-items:center; justify-content:center; }
+    #bookmark-ribbon-btn .ribbon-count { font-size:8px; color:rgba(245,230,208,0.45); letter-spacing:0.05em; font-family:var(--font-display); line-height:1; }
+
+    /* ── Tap zone (top-right corner) — creates bookmarks only ── */
     #reader-tap-bookmark {
       position: fixed;
-      top: 64px; right: 0;
+      top: 0; right: 0;
       width: 25vw; height: 35vh;
       min-width: 80px; min-height: 100px;
       z-index: 299;
-      cursor: pointer;
+      cursor: default;
       background: transparent;
       -webkit-tap-highlight-color: transparent;
     }
@@ -1537,22 +1553,24 @@
       position: absolute;
       bottom: 5.5rem;
       right: 1.5rem;
-      width: 44px;
-      height: 44px;
+      width: 2.15rem;
+      height: 2.15rem;
       background: transparent;
-      border: none;
-      border-radius: 0;
+      border: 1px solid rgba(197, 165, 128, 0.3);
+      border-radius: 1px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: filter 0.2s, transform 0.2s;
+      font-size: 1rem;
+      color: var(--ash);
+      transition: border-color 0.2s, color 0.2s;
       z-index: 200;
     }
 
     .sidebar-settings-btn:hover {
-      filter: drop-shadow(0 0 6px var(--crimson-glow));
-      transform: scale(1.1);
+      border-color: var(--crimson-pale);
+      color: var(--ash-light);
     }
 
     .sidebar-settings-btn.active,
@@ -1562,19 +1580,6 @@
       outline: none;
       box-shadow: none;
       -webkit-tap-highlight-color: transparent;
-    }
-
-    .sidebar-settings-btn svg {
-      display: block;
-      transition: opacity 0.2s, transform 0.3s;
-    }
-
-    .sidebar-settings-btn:hover svg {
-      opacity: 0.75;
-    }
-
-    .sidebar-settings-btn.active svg {
-      transform: rotate(20deg);
     }
 
     /* Settings Dialog */
@@ -2106,18 +2111,29 @@
       <div class="reader-sidebar" id="reader-sidebar">
         <div class="sidebar-scroll-area">
           <div class="sidebar-meta">
-            <button class="btn btn-ghost btn-sm" onclick="backToLibrary()" style="margin-bottom:1rem;width:100%;"><svg
-                width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="15 18 9 12 15 6" />
-              </svg> Back to Library</button>
+            <!-- Top row: back to library + bookmark access -->
+            <div class="sidebar-header-row">
+              <button class="btn btn-ghost btn-sm sidebar-back-btn" onclick="backToLibrary()"><svg
+                  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="15 18 9 12 15 6" />
+                </svg> Back to Library</button>
+              <button id="bookmark-ribbon-btn" onclick="openBhnModal('bookmarks')" title="Bookmarks & Highlights">
+                <svg class="ribbon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
+                  <path d="M6 3H18V21L12 16.5L6 21V3Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                </svg>
+                <span class="ribbon-count" id="ribbon-count"></span>
+              </button>
+            </div>
             <div class="sidebar-title" id="sidebar-title">—</div>
             <div class="sidebar-author" id="sidebar-author"></div>
-            <details class="sidebar-details" id="sidebar-details" style="display:none">
-              <summary>Details</summary>
+            <!-- Collapsible details — toggled by 𝒊 button -->
+            <div class="sidebar-details-content" id="sidebar-details" style="display:none">
               <div class="sidebar-tags" id="sidebar-tags"></div>
               <div class="sidebar-summary" id="sidebar-summary"></div>
-            </details>
+            </div>
+            <!-- 𝒊 toggle: lower-left, only shown when there's content -->
+            <button class="sidebar-info-btn" id="sidebar-info-btn" onclick="toggleSidebarDetails()" title="Details">𝒊</button>
           </div>
           <div class="sidebar-toc">
             <div class="toc-heading">Contents</div>
@@ -2126,9 +2142,7 @@
         </div>
 
         <!-- Settings Button -->
-        <button id="settings-button" class="sidebar-settings-btn" title="Settings">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet"><defs><clipPath id="si-def-a"><path d="M 37.5 38.410156 L 336.75 38.410156 L 336.75 337.660156 L 37.5 337.660156 Z" clip-rule="nonzero"/></clipPath><clipPath id="si-def-b"><path d="M 37.5 37.5 L 111 37.5 L 111 111 L 37.5 111 Z" clip-rule="nonzero"/></clipPath></defs><g clip-path="url(#si-def-a)"><path fill="#c9ac95" d="M 336.59375 187.960938 C 231.714844 212.632812 211.714844 232.632812 187.042969 337.511719 C 162.378906 232.625 142.378906 212.625 37.5 187.960938 C 142.378906 163.289062 162.378906 143.289062 187.050781 38.410156 C 211.714844 143.289062 231.714844 163.289062 336.59375 187.960938 Z"/></g><g clip-path="url(#si-def-b)"><path fill="#c9ac95" d="M 110.929688 74.214844 C 85.183594 80.273438 80.273438 85.183594 74.214844 110.933594 C 68.160156 85.183594 63.25 80.273438 37.5 74.214844 C 63.25 68.160156 68.160156 63.25 74.214844 37.5 C 80.273438 63.25 85.183594 68.160156 110.929688 74.214844 Z"/></g></svg>
-        </button>
+        <button id="settings-button" class="sidebar-settings-btn" title="Settings">⟡</button>
 
         <!-- Settings Dialog -->
         <div id="settings-dialog" class="settings-dialog" style="display: none;">
@@ -2190,16 +2204,7 @@
         </svg>
       </button>
 
-
-      <!-- Phase 4: Bookmark ribbon button -->
-      <button id="bookmark-ribbon-btn" onclick="openBhnModal('bookmarks')" title="Bookmarks & Highlights">
-        <svg class="ribbon-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
-          <path d="M6 3H18V21L12 16.5L6 21V3Z" stroke="#f5e6d0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        </svg>
-        <span class="ribbon-count" id="ribbon-count"></span>
-      </button>
-
-      <!-- Invisible tap zone: top-right corner adds a bookmark (KOReader style) -->
+      <!-- Invisible tap zone: top-right corner ONLY adds a bookmark, does NOT open modal -->
       <div id="reader-tap-bookmark" onclick="handleTapBookmark()" title=""></div>
 
     </div><!-- /reader-layout -->
@@ -2653,6 +2658,15 @@
 
       function backToLibrary() { showPage('library'); }
 
+      function toggleSidebarDetails() {
+        const content = document.getElementById('sidebar-details');
+        const btn = document.getElementById('sidebar-info-btn');
+        if (!content) return;
+        const isOpen = content.style.display !== 'none';
+        content.style.display = isOpen ? 'none' : '';
+        if (btn) btn.classList.toggle('active', !isOpen);
+      }
+
       // ═══════════════════════════════════════════
       // LIBRARY RENDER
       // ═══════════════════════════════════════════
@@ -2900,7 +2914,9 @@
         tagsEl.innerHTML = tagList.map(t => `<span class="sidebar-tag">${escHtml(t)}</span>`).join('');
         const hasSidebarContent = tagList.length > 0 || (fic.summary && fic.summary !== 'N/A');
         const sidebarDetails = document.getElementById('sidebar-details');
-        if (sidebarDetails) sidebarDetails.style.display = hasSidebarContent ? '' : 'none';
+        const sidebarInfoBtn = document.getElementById('sidebar-info-btn');
+        if (sidebarDetails) sidebarDetails.style.display = 'none'; // collapsed by default
+        if (sidebarInfoBtn) sidebarInfoBtn.style.display = hasSidebarContent ? 'inline-flex' : 'none';
 
         // Show loading
         document.getElementById('reader-loading').style.display = 'flex';
@@ -3319,8 +3335,8 @@
       }
 
       // Toggle settings dialog
-      const ICON_DEFAULT = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet"><defs><clipPath id="si-def-a"><path d="M 37.5 38.410156 L 336.75 38.410156 L 336.75 337.660156 L 37.5 337.660156 Z" clip-rule="nonzero"/></clipPath><clipPath id="si-def-b"><path d="M 37.5 37.5 L 111 37.5 L 111 111 L 37.5 111 Z" clip-rule="nonzero"/></clipPath></defs><g clip-path="url(#si-def-a)"><path fill="#c9ac95" d="M 336.59375 187.960938 C 231.714844 212.632812 211.714844 232.632812 187.042969 337.511719 C 162.378906 232.625 142.378906 212.625 37.5 187.960938 C 142.378906 163.289062 162.378906 143.289062 187.050781 38.410156 C 211.714844 143.289062 231.714844 163.289062 336.59375 187.960938 Z"/></g><g clip-path="url(#si-def-b)"><path fill="#c9ac95" d="M 110.929688 74.214844 C 85.183594 80.273438 80.273438 85.183594 74.214844 110.933594 C 68.160156 85.183594 63.25 80.273438 37.5 74.214844 C 63.25 68.160156 68.160156 63.25 74.214844 37.5 C 80.273438 63.25 85.183594 68.160156 110.929688 74.214844 Z"/></g></svg>`;
-      const ICON_ACTIVE = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet"><defs><clipPath id="si-act-a"><path d="M 37.5 38.410156 L 336.75 38.410156 L 336.75 337.660156 L 37.5 337.660156 Z" clip-rule="nonzero"/></clipPath><clipPath id="si-act-b"><path d="M 37.5 37.5 L 111.75 37.5 L 111.75 111.75 L 37.5 111.75 Z" clip-rule="nonzero"/></clipPath><clipPath id="si-act-c"><path d="M 183.824219 156.023438 L 249 156.023438 L 249 221.273438 L 183.824219 221.273438 Z" clip-rule="nonzero"/></clipPath></defs><g clip-path="url(#si-act-a)"><path fill="#6e1e1e" d="M 336.59375 187.960938 C 231.714844 212.632812 211.714844 232.632812 187.042969 337.511719 C 162.378906 232.625 142.378906 212.625 37.5 187.960938 C 142.378906 163.289062 162.378906 143.289062 187.050781 38.410156 C 211.714844 143.289062 231.714844 163.289062 336.59375 187.960938 Z"/></g><g clip-path="url(#si-act-b)"><path fill="#6e1e1e" d="M 112.042969 74.773438 C 85.90625 80.921875 80.921875 85.90625 74.769531 112.046875 C 68.625 85.90625 63.640625 80.921875 37.5 74.773438 C 63.640625 68.625 68.625 63.640625 74.773438 37.5 C 80.921875 63.640625 85.90625 68.625 112.042969 74.773438 Z"/></g><g clip-path="url(#si-act-c)"><path fill="#6e1e1e" d="M 248.96875 188.597656 C 226.125 193.96875 221.769531 198.328125 216.394531 221.171875 C 211.023438 198.324219 206.667969 193.96875 183.824219 188.597656 C 206.667969 183.222656 211.023438 178.867188 216.394531 156.023438 C 221.769531 178.867188 226.125 183.222656 248.96875 188.597656 Z"/></g></svg>`;
+      const ICON_DEFAULT = `⟡`;
+      const ICON_ACTIVE  = `⟡`;
 
       function toggleSettingsDialog() {
         const settingsBtn = document.getElementById('settings-button');
@@ -3683,7 +3699,6 @@
 
         const header = document.querySelector('header');
         const sidebarToggle = document.getElementById('sidebar-toggle');
-        const bookmarkRibbon = document.getElementById('bookmark-ribbon-btn');
         const readerMain = document.getElementById('reader-main');
         const currentScrollY = readerMain.scrollTop;
 
@@ -3696,13 +3711,11 @@
             // Scrolling DOWN: Hide controls
             header.classList.add('hidden');
             sidebarToggle?.classList.add('hidden');
-            bookmarkRibbon?.classList.add('hidden');
             document.body.classList.add('reader-fullscreen');
           } else if (delta < 0) {
             // Scrolling UP: Immediately show controls
             header.classList.remove('hidden');
             sidebarToggle?.classList.remove('hidden');
-            bookmarkRibbon?.classList.remove('hidden');
             document.body.classList.remove('reader-fullscreen');
           }
           lastScrollY = currentScrollY;
@@ -3888,9 +3901,7 @@
       function updateRibbonCount() {
         const n = _rs.bookmarks.length + _rs.highlights.length;
         const el = document.getElementById('ribbon-count');
-        const btn = document.getElementById('bookmark-ribbon-btn');
         if (el) el.textContent = n > 0 ? n : '';
-        if (btn) btn.classList.toggle('has-items', n > 0);
       }
 
 
@@ -3935,18 +3946,9 @@
         updateRibbonCount();
       }
 
-      /** KOReader-style: tap top-right corner to add bookmark, flash the ribbon. */
+      /** KOReader-style: tap top-right corner to add a bookmark only. */
       function handleTapBookmark() {
         addBookmark();
-        const btn = document.getElementById('bookmark-ribbon-btn');
-        if (btn) {
-          btn.style.transform = 'translateX(-8px)';
-          btn.style.opacity = '1';
-          setTimeout(() => {
-            btn.style.transform = '';
-            btn.style.opacity = '';
-          }, 400);
-        }
       }
 
       function deleteBookmark(id) {
