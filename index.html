@@ -1551,7 +1551,7 @@
     /* Settings Button */
     .sidebar-settings-btn {
       position: absolute;
-      bottom: 1.5rem;
+      bottom: 5.5rem; /* 1.5rem visual + 4rem(64px header) since sidebar bottom extends past viewport */
       right: 1.5rem;
       width: 2.15rem;
       height: 2.15rem;
@@ -1587,7 +1587,7 @@
     /* Settings Dialog */
     .settings-dialog {
       position: absolute;
-      bottom: 5rem;
+      bottom: 9rem;
       right: 1.5rem;
       width: 240px;
       background: var(--smoke-light);
@@ -1902,6 +1902,14 @@
         /* Increased to ensure buttons on top */
         transform: translateX(-100%);
         box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+      }
+
+      .sidebar-settings-btn {
+        bottom: 1.5rem; /* mobile: sidebar is fixed with bottom:0, no header offset needed */
+      }
+
+      .settings-dialog {
+        bottom: 5rem;
       }
 
       .reader-sidebar.open {
